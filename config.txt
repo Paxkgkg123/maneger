@@ -1,0 +1,1 @@
+C:\Users\relaz\CLionProjects\maneger_password\cmake-build-debug\password_base.txt
