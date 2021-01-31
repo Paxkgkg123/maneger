@@ -11,11 +11,11 @@ string base[MAX_NUM_PASS];
 
 string check_master_pass(string);
 
-void master(char*);
+void master(char*, char*);
 
 void get(char*, char*);
 
-void add(char*, char*);
+void add(char*, char*, char*);
 
 void del(char*);
 
@@ -36,21 +36,14 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    ifstream in("config.txt");
-    in >> config;
     if (argc > 1) {
         if (strcmp(argv[1], "--config") == 0) {
             base_input(argv[2]); // заполняем временную базу паролями
-            if (argc == 5) {
+            if (argc > 2) {
                 if (strcmp(argv[3], "get") == 0) get(argv[4], &master_pass[0]);
+                else if (strcmp(argv[3], "master") == 0) master(&master_pass[0], argv[4]);
                 else if (strcmp(argv[3], "del") == 0) del(argv[4]);
-                else if (strcmp(argv[3], "add") == 0) {
-                    string data;
-                    data.append(argv[4]);
-                    data.push_back('/');
-                    data.append(argv[5]);
-                    add(&data[0], &master_pass[0]);
-                }
+                else if (strcmp(argv[3], "add") == 0) add(argv[4], argv[5], &master_pass[0]);
                 else if (strcmp(argv[3], "chk") == 0) chk(argv[4]);
                 else {
                     cout << "Incorrect command\n";
@@ -61,6 +54,7 @@ int main(int argc, char **argv) {
             } else {
                 config.append(argv[2]);
             }
+            base_output(&config[0]);
         } else {
             if (strcmp(argv[1], "--help") == 0)
                 help();
@@ -69,25 +63,33 @@ int main(int argc, char **argv) {
             return 0;
         }
     }
+
     if (config.empty()) {
         ifstream conf("config.txt");
         conf >> config;
         conf.close();
     }
+
     char* c = &config[0];
     base_input(c);
     string command, site_login;
     cout << "Input command\n";
     cin >> command;
+    ofstream out(config);
     while (command != "q" && command != "quit" && command != "exit") {
-        if (command == "master") master(&master_pass[0]);
+        if (command == "master") {
+            string n_master;
+            cin >> n_master;
+            master(&master_pass[0], &n_master[0]);
+        }
         else if (command == "get") {
             cin >> site_login;
             get(&site_login[0], &master_pass[0]);
         }
         else if (command == "add") {
-            cin >> site_login;
-            add(&site_login[0], &master_pass[0]);
+            string password;
+            cin >> site_login >> password;
+            add(&site_login[0], &password[0], &master_pass[0]);
         }
         else if (command == "del") {
             cin >> site_login;
@@ -104,8 +106,7 @@ int main(int argc, char **argv) {
         cin >> command;
     }
 
-    c = &config[0];
-    base_output(c);
+    base_output(&config[0]);
     return 0;
 }
 
@@ -120,21 +121,21 @@ string check_master_pass(string master_password) {
     return "0";
 }
 
-void master(char* m) {
-    string master_pass;
+void master(char* m, char* N) {
+    string master_pass, new_master;
     master_pass.append(m);
-    string new_master;
-    cin >> new_master;
+    new_master.append(N);
     for (int i = 0; base[i] != "."; i++) {
         if (!base[i].empty()) {
             int n;
-            for (int j = 0; base[i][j] != '/'; i++)
-                n = i;
+            for (int j = 0; base[i][j] != '/'; j++)
+                n = j;
             string password;
-            password.append(base[i], n + 1, base[i].size() - n - 1);
+            password.append(base[i], n + 2, base[i].size() - n - 2);
             base[i].erase(n + 1);
-            decryption(password, master_pass);
-            encryption(password, new_master);
+            password = decryption(password, master_pass);
+            password = encryption(password, new_master);
+            base[i].push_back('/');
             base[i].append(password);
         }
     }
@@ -178,12 +179,11 @@ void get(char* argv, char* m) {
     cout <<"password copied\n";
 }
 
-void add(char* argv, char* m) {
-    string site_login, master_pass;
+void add(char* s_l, char* p, char* m) {
+    string site_login, master_pass, password;
     master_pass.append(m);
-    site_login.append(argv);
-    string password;
-    cin >> password;
+    site_login.append(s_l);
+    password.append(p);
     int i = -1;
     do {
         i++;
@@ -235,12 +235,12 @@ void chk(char* argv) {
 }
 
 void help() {
-    cout << "master - Устанавливает новый мастер-пароль (пароль вводится с клавиатуры)\n";
-    cout << "get SITE:LOGIN - Копирует в буфер обмена пароль для сайта SITE и логина LOGIN\n";
-    cout << "add SITE:LOGIN - Добавляет в базу пароль для сайта SITE, логина LOGIN (пароль вводится с клавиатуры)\n";
-    cout << "del SITE:LOGIN - Удаляет из базы пароль для сайта SITE, логина LOGIN\n";
-    cout << "chk SITE:LOGIN - Проверяет наличие пароля для сайта SITE, логина LOGIN\n";
-    cout << "q / quit / exit - Завершает работу программы\n";
+    cout << "master - Sets a new master password (the password is entered from the keyboard)\n";
+    cout << "get SITE:LOGIN - Copies the password for the site and login to the clipboard\n";
+    cout << "add SITE:LOGIN - Adds a password to the database for the site, login LOGIN (the password is entered from the keyboard)\n";
+    cout << "del SITE:LOGIN - Deletes the password for the SITE, login from the database\n";
+    cout << "chk SITE:LOGIN - Checks the presence of a password for the site SITE, login LOGIN\n";
+    cout << "q / quit / exit - Terminates the program\n";
 }
 
 void base_input(char* argv) {
